@@ -1,0 +1,525 @@
+
+import React, { useState, useMemo, useEffect } from 'react';
+import { AppScreen, PracticeMode, Question, ProgressMap, Progress, PracticeRange } from './types';
+import { Card, Button, ProgressBar, Icons } from './components';
+import { getStoredQuestions, getStoredProgress, updateProgress, saveQuestions, saveProgress, resetAllData, getDailyStats } from './store';
+import { parseWordText, parseAnswerKey } from './parser';
+
+// --- HOME VIEW ---
+export const HomeView: React.FC<{ 
+  onNavigate: (s: AppScreen) => void, 
+  onStartPractice: (m: PracticeMode, r?: PracticeRange) => void
+}> = ({ onNavigate, onStartPractice }) => {
+  const questions = getStoredQuestions();
+  const progress = getStoredProgress();
+  const stats = getDailyStats();
+  const today = new Date().toISOString().split('T')[0];
+  const todayStat = stats[today] || { answered: 0, correct: 0 };
+
+  const [showRangeModal, setShowRangeModal] = useState(false);
+  const [rangeStart, setRangeStart] = useState<number>(1);
+  const [rangeEnd, setRangeEnd] = useState<number>(25);
+  const [isShuffle, setIsShuffle] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (questions.length > 0) {
+      setRangeEnd(Math.min(25, questions.length));
+    }
+  }, [questions.length]);
+
+  const meta = useMemo(() => {
+    const vals = Object.values(progress);
+    const starred = vals.filter(p => p.starred).length;
+    const wrongCount = vals.filter(p => p.lastResult === 'wrong').length;
+    const accuracy = todayStat.answered > 0 ? Math.round((todayStat.correct / todayStat.answered) * 100) : 0;
+    return { starred, accuracy, wrongCount };
+  }, [progress, todayStat]);
+
+  const handleReset = () => {
+    if (confirm("DIQQAT! Barcha yuklangan savollar va natijalar butunlay o'chib ketadi. Rozimisiz?")) {
+      resetAllData();
+      window.location.reload();
+    }
+  };
+
+  const handleRangeSubmit = () => {
+    if (rangeStart < 1 || rangeEnd > questions.length || rangeStart > rangeEnd) {
+      alert("Noto'g'ri oraliq kiritildi.");
+      return;
+    }
+    onStartPractice(PracticeMode.RANGE, { start: rangeStart, end: rangeEnd, shuffle: isShuffle });
+    setShowRangeModal(false);
+  };
+
+  return (
+    <div className="flex flex-col gap-6 p-6 pb-24 animate-in fade-in duration-500 relative">
+      <header>
+        <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">TezkorBilim</h1>
+        <p className="text-slate-500 text-sm">Vizual xotira orqali tezkor o'rganish</p>
+      </header>
+
+      <div className="grid grid-cols-2 gap-3">
+        <Card className="text-center py-4 px-2">
+          <div className="text-2xl font-black text-indigo-600 dark:text-indigo-400">{questions.length}</div>
+          <div className="text-[10px] uppercase font-bold text-slate-400">Jami Savollar</div>
+        </Card>
+        <Card className="text-center py-4 px-2">
+          <div className="text-2xl font-black text-amber-500">{meta.starred}</div>
+          <div className="text-[10px] uppercase font-bold text-slate-400">Tanlanganlar</div>
+        </Card>
+        <Card className="text-center py-4 px-2">
+          <div className="text-2xl font-black text-green-500">{todayStat.answered}</div>
+          <div className="text-[10px] uppercase font-bold text-slate-400">Bugun yechildi</div>
+        </Card>
+        <Card className="text-center py-4 px-2">
+          <div className="text-2xl font-black text-blue-500">{meta.accuracy}%</div>
+          <div className="text-[10px] uppercase font-bold text-slate-400">Bugungi aniqlik</div>
+        </Card>
+      </div>
+
+      <div className="flex flex-col gap-3">
+        <Button onClick={() => setShowRangeModal(true)} variant="primary" className="h-20 text-lg">
+          Testni boshlash
+        </Button>
+        <div className="grid grid-cols-2 gap-3">
+          <Button 
+            onClick={() => onStartPractice(PracticeMode.STARRED)} 
+            variant="ghost" 
+            className="border border-slate-200 dark:border-slate-800" 
+            disabled={meta.starred === 0}
+          >
+            Faqat Tanlanganlar
+          </Button>
+          <Button 
+            onClick={() => onStartPractice(PracticeMode.WRONG)} 
+            variant="ghost" 
+            className="border border-slate-200 dark:border-slate-800"
+            disabled={meta.wrongCount === 0}
+          >
+            Faqat Xatolar
+          </Button>
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-2 mt-4">
+        <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest px-1">Ma'lumotlar Boshqaruvi</h3>
+        <Button onClick={() => onNavigate(AppScreen.IMPORT_QUESTIONS)} variant="ghost" className="justify-start gap-3 bg-slate-100 dark:bg-slate-900">
+          <Icons.Practice /> Word matnidan yuklash
+        </Button>
+        <Button onClick={() => onNavigate(AppScreen.IMPORT_ANSWERS)} variant="ghost" className="justify-start gap-3 bg-slate-100 dark:bg-slate-900">
+          <Icons.Stats /> Javoblar kalitini qo'shish
+        </Button>
+        <Button onClick={handleReset} variant="danger" className="justify-start gap-3 mt-2 shadow-md">
+          <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+          </svg>
+          Yaratilgan testni o'chirish
+        </Button>
+      </div>
+
+      {showRangeModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-6 animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-3xl p-6 shadow-2xl scale-in-center">
+            <h2 className="text-xl font-black mb-4">Oraliqni tanlang</h2>
+            <p className="text-slate-500 text-sm mb-6">Mavjud savollar: 1 - {questions.length}</p>
+            
+            <div className="flex flex-col gap-4 mb-8">
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-bold text-slate-400 uppercase">Dan:</label>
+                <input 
+                  type="number" 
+                  value={rangeStart}
+                  onChange={(e) => setRangeStart(parseInt(e.target.value))}
+                  className="bg-slate-100 dark:bg-slate-800 p-4 rounded-xl border-none outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-bold"
+                />
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-bold text-slate-400 uppercase">Gacha:</label>
+                <input 
+                  type="number" 
+                  value={rangeEnd}
+                  onChange={(e) => setRangeEnd(parseInt(e.target.value))}
+                  className="bg-slate-100 dark:bg-slate-800 p-4 rounded-xl border-none outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-bold"
+                />
+              </div>
+
+              <label className="flex items-center gap-3 p-4 bg-slate-100 dark:bg-slate-800 rounded-xl cursor-pointer active:scale-95 transition-transform">
+                <input 
+                  type="checkbox" 
+                  checked={isShuffle}
+                  onChange={(e) => setIsShuffle(e.target.checked)}
+                  className="w-5 h-5 rounded accent-indigo-600"
+                />
+                <span className="font-bold text-sm">Savollarni aralashtirish</span>
+              </label>
+            </div>
+
+            <div className="flex gap-3">
+              <Button onClick={() => setShowRangeModal(false)} variant="ghost" className="flex-1">Bekor qilish</Button>
+              <Button onClick={handleRangeSubmit} variant="primary" className="flex-1 shadow-indigo-500/20 shadow-lg">Boshlash</Button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// --- IMPORT QUESTIONS VIEW ---
+export const ImportQuestionsView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
+  const [text, setText] = useState("");
+  const [preview, setPreview] = useState<Question[]>([]);
+  const [errors, setErrors] = useState<string[]>([]);
+
+  const handleParse = () => {
+    const { questions, errors: parseErrors } = parseWordText(text);
+    setPreview(questions);
+    setErrors(parseErrors);
+  };
+
+  const handleSave = () => {
+    if (preview.length === 0) return;
+    saveQuestions(preview);
+    alert(`${preview.length} ta savol muvaffaqiyatli saqlandi!`);
+    onBack();
+  };
+
+  return (
+    <div className="p-6 flex flex-col gap-6 pb-24 animate-in slide-in-from-right duration-300">
+      <div className="flex items-center gap-4">
+        <button onClick={onBack} className="text-slate-400 p-2"><Icons.Back /></button>
+        <h1 className="text-2xl font-black">Savollarni Yuklash</h1>
+      </div>
+
+      <Card className="p-4 bg-amber-500/5 border-amber-500/20 text-xs text-amber-700 dark:text-amber-400 leading-relaxed">
+        Word hujjatidan nusxa olingan matnni bu yerga qo'ying. <br/>
+        Format: <strong>1. Savol matni? a) var1 b) var2 c) var3 d) var4</strong>
+      </Card>
+
+      <textarea
+        className="w-full h-64 p-4 rounded-xl bg-slate-100 dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 text-sm focus:border-indigo-500 outline-none transition-all resize-none"
+        placeholder="Matnni bu yerga joylang..."
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+      />
+
+      <Button onClick={handleParse} variant="secondary">Matnni tahlil qilish</Button>
+
+      {errors.length > 0 && (
+        <div className="flex flex-col gap-2">
+          <h3 className="text-rose-500 font-bold text-sm">Xatolar ({errors.length}):</h3>
+          <div className="max-h-32 overflow-y-auto text-[10px] text-rose-400 bg-rose-500/5 p-2 rounded-lg no-scrollbar border border-rose-500/20">
+            {errors.map((err, i) => <div key={i}>• {err}</div>)}
+          </div>
+        </div>
+      )}
+
+      {preview.length > 0 && (
+        <div className="flex flex-col gap-4 animate-in slide-in-from-bottom-4 duration-300">
+          <h3 className="font-bold text-green-500">Muvaffaqiyatli: {preview.length} ta savol topildi</h3>
+          <div className="flex flex-col gap-2">
+            <h4 className="text-xs uppercase text-slate-400 font-bold">Dastlabki 3 ta savol ko'rinishi:</h4>
+            {preview.slice(0, 3).map(q => (
+              <div key={q.id} className="p-3 bg-slate-100 dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 text-xs">
+                <div className="font-bold">{q.number}. {q.prompt}</div>
+                <div className="text-slate-500 ml-4 mt-1">a) {q.options[0]} ...</div>
+              </div>
+            ))}
+          </div>
+          <Button onClick={handleSave} variant="primary" className="h-16">Saqlash va Tasdiqlash</Button>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// --- IMPORT ANSWERS VIEW ---
+export const ImportAnswersView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
+  const [text, setText] = useState("");
+  const [errors, setErrors] = useState<string[]>([]);
+
+  const handleApply = () => {
+    const { answers, errors: parseErrors } = parseAnswerKey(text);
+    if (parseErrors.length > 5 && text.trim().length > 0) {
+      setErrors(parseErrors);
+      return;
+    }
+
+    const questions = getStoredQuestions();
+    let updatedCount = 0;
+    const updated = questions.map(q => {
+      if (answers[q.id] !== undefined) {
+        updatedCount++;
+        return { ...q, correctIndex: answers[q.id] as any };
+      }
+      return q;
+    });
+
+    saveQuestions(updated);
+    alert(`${updatedCount} ta savol uchun to'g'ri javoblar biriktirildi!`);
+    onBack();
+  };
+
+  const handleBulkSet = (index: number) => {
+    const letter = String.fromCharCode(65 + index); // A, B, C, D
+    if (confirm(`Barcha yuklangan savollar uchun to'g'ri javobni "${letter}" deb belgilamoqchimisiz?`)) {
+      const questions = getStoredQuestions();
+      const updated = questions.map(q => ({ ...q, correctIndex: index as any }));
+      saveQuestions(updated);
+      alert(`Barcha (${questions.length} ta) savol uchun javob "${letter}" qilib belgilandi.`);
+      onBack();
+    }
+  };
+
+  return (
+    <div className="p-6 flex flex-col gap-6 pb-24 animate-in slide-in-from-right duration-300">
+      <div className="flex items-center gap-4">
+        <button onClick={onBack} className="text-slate-400 p-2"><Icons.Back /></button>
+        <h1 className="text-2xl font-black">Javoblar Kaliti</h1>
+      </div>
+
+      <div className="flex flex-col gap-3">
+        <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Tezkor tanlash (Barcha savollarga):</h3>
+        <div className="grid grid-cols-4 gap-2">
+          {['A', 'B', 'C', 'D'].map((l, i) => (
+            <button 
+              key={l}
+              onClick={() => handleBulkSet(i)}
+              className="h-12 rounded-xl bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 font-black border-2 border-indigo-200 dark:border-indigo-800 active:scale-90 transition-transform"
+            >
+              {l}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="h-[1px] bg-slate-200 dark:bg-slate-800 my-2" />
+
+      <Card className="p-4 bg-blue-500/5 border-blue-500/20 text-xs text-blue-700 dark:text-blue-400 leading-relaxed">
+        Javoblarni quyidagi formatda joylang: <br/>
+        <strong>1-a, 2-c, 3-b</strong> yoki har bir qatorda bittadan: <br/>
+        <strong>1 A <br/> 2 B</strong>
+      </Card>
+
+      <textarea
+        className="w-full h-48 p-4 rounded-xl bg-slate-100 dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 text-sm focus:border-indigo-500 outline-none resize-none"
+        placeholder="1-a, 2-b, 3-c..."
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+      />
+
+      <Button onClick={handleApply} variant="primary">Kalitni saqlash</Button>
+      
+      {errors.length > 0 && (
+        <div className="text-rose-500 text-xs mt-2 bg-rose-500/10 p-3 rounded-lg border border-rose-500/20">{errors.length} ta xato topildi. Formatni tekshiring.</div>
+      )}
+    </div>
+  );
+};
+
+// --- PRACTICE VIEW ---
+export const PracticeView: React.FC<{ mode: PracticeMode, range?: PracticeRange, onExit: () => void }> = ({ mode, range, onExit }) => {
+  const [questions, setQuestions] = useState<Question[]>([]);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
+  const [isRevealed, setIsRevealed] = useState(false);
+  const [progress, setProgress] = useState<ProgressMap>(getStoredProgress());
+
+  useEffect(() => {
+    let pool = getStoredQuestions();
+    if (pool.length === 0) {
+      alert("Hali savollar yuklanmagan. Avval savollarni yuklang.");
+      onExit();
+      return;
+    }
+
+    if (mode === PracticeMode.RANGE && range) {
+      pool = pool.filter(q => q.number >= range.start && q.number <= range.end);
+      if (range.shuffle) {
+        pool = [...pool].sort(() => Math.random() - 0.5);
+      }
+    } else if (mode === PracticeMode.STARRED) {
+      pool = pool.filter(q => progress[q.id]?.starred);
+    } else if (mode === PracticeMode.WRONG) {
+      pool = pool.filter(q => progress[q.id]?.lastResult === 'wrong');
+    } else if (mode === PracticeMode.SMART) {
+      pool.sort((a, b) => {
+        const pA = progress[a.id];
+        const pB = progress[b.id];
+        if (pA?.starred !== pB?.starred) return pA?.starred ? -1 : 1;
+        if ((pA?.lastResult === 'wrong') !== (pB?.lastResult === 'wrong')) return pA?.lastResult === 'wrong' ? -1 : 1;
+        return (pA?.lastSeenAt || 0) - (pB?.lastSeenAt || 0);
+      });
+    }
+
+    setQuestions(pool);
+  }, [mode, range]);
+
+  const currentQ = questions[currentIndex];
+
+  const handleSelect = (idx: number) => {
+    if (selectedIdx !== null) return;
+    setSelectedIdx(idx);
+
+    if (currentQ.correctIndex !== undefined) {
+      const isCorrect = idx === currentQ.correctIndex;
+      const newProg = updateProgress(currentQ.id, isCorrect ? 'correct' : 'wrong');
+      setProgress(newProg);
+      setIsRevealed(true);
+    }
+  };
+
+  const handleNext = () => {
+    if (currentIndex < questions.length - 1) {
+      setCurrentIndex(currentIndex + 1);
+      setSelectedIdx(null);
+      setIsRevealed(false);
+    } else {
+      onExit();
+    }
+  };
+
+  const handlePrev = () => {
+    if (currentIndex > 0) {
+      setCurrentIndex(currentIndex - 1);
+      setSelectedIdx(null);
+      setIsRevealed(false);
+    }
+  };
+
+  const toggleStar = () => {
+    if (!currentQ) return;
+    const newProg = updateProgress(currentQ.id, 'toggle_star');
+    setProgress(newProg);
+  };
+
+  if (!currentQ) return null;
+
+  const hasAnswerKey = currentQ.correctIndex !== undefined;
+
+  return (
+    <div className="flex flex-col h-screen max-h-screen overflow-hidden bg-white dark:bg-slate-950 animate-in slide-in-from-bottom duration-300">
+      <div className="p-4 flex flex-col gap-3">
+        <div className="flex justify-between items-center">
+          <button onClick={onExit} className="text-slate-400 p-2"><Icons.Back /></button>
+          <div className="text-[10px] font-black uppercase text-slate-400 tracking-widest">
+            Mashq — {currentIndex + 1}/{questions.length}
+          </div>
+          <button onClick={toggleStar} className="p-2">
+            <Icons.Star filled={progress[currentQ.id]?.starred} />
+          </button>
+        </div>
+        <ProgressBar current={currentIndex + 1} total={questions.length} />
+      </div>
+
+      <div className="flex-1 overflow-y-auto no-scrollbar px-6 pb-32">
+        <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-8 leading-tight">
+          {currentQ.number}. {currentQ.prompt}
+        </h2>
+
+        <div className="flex flex-col gap-3">
+          {currentQ.options.map((opt, idx) => {
+            let stateClass = "bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200";
+            
+            if (selectedIdx !== null) {
+              if (hasAnswerKey) {
+                if (idx === currentQ.correctIndex) {
+                  stateClass = "bg-green-500/10 border-green-500 text-green-600 dark:text-green-400 ring-2 ring-green-500/30 font-bold";
+                } else if (idx === selectedIdx) {
+                  stateClass = "bg-rose-500/10 border-rose-500 text-rose-600 dark:text-rose-400 ring-2 ring-rose-500/30";
+                } else {
+                  stateClass = "opacity-40";
+                }
+              } else {
+                if (idx === selectedIdx) {
+                  stateClass = isRevealed ? "bg-indigo-500/20 border-indigo-500" : "bg-indigo-600 text-white border-indigo-600";
+                } else {
+                  stateClass = isRevealed ? "opacity-40" : "";
+                }
+              }
+            }
+
+            return (
+              <button
+                key={idx}
+                onClick={() => handleSelect(idx)}
+                className={`w-full text-left p-5 rounded-2xl border-2 transition-all duration-200 font-medium active:scale-95 shadow-sm ${stateClass}`}
+              >
+                <div className="flex items-center gap-4">
+                  <span className="flex-shrink-0 w-8 h-8 rounded-full border border-current flex items-center justify-center font-bold text-xs uppercase">
+                    {String.fromCharCode(97 + idx)}
+                  </span>
+                  <span className="flex-grow text-sm">{opt}</span>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+
+        {selectedIdx !== null && !hasAnswerKey && !isRevealed && (
+          <div className="mt-8 animate-in fade-in duration-300">
+            <Button onClick={() => setIsRevealed(true)} variant="secondary" className="h-16">
+              Javobni ko'rish (Tekshirish)
+            </Button>
+          </div>
+        )}
+
+        {(isRevealed || (selectedIdx !== null && hasAnswerKey)) && (
+          <div className="mt-8 flex gap-3 animate-in fade-in slide-in-from-top-4">
+             <Button onClick={handlePrev} variant="ghost" className="border border-slate-200 dark:border-slate-800 h-16 w-1/3" disabled={currentIndex === 0}>
+              Orqaga
+            </Button>
+            <Button onClick={handleNext} variant="primary" className="h-16 flex-1 shadow-lg shadow-indigo-500/20">
+              {currentIndex === questions.length - 1 ? "Tugatish" : "Keyingisi"}
+            </Button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// --- STATS VIEW ---
+export const StatsView: React.FC = () => {
+  const stats = getDailyStats();
+  
+  const handleReset = () => {
+    if (confirm("DIQQAT! Barcha yuklangan savollar va natijalar butunlay o'chib ketadi. Rozimisiz?")) {
+      resetAllData();
+      window.location.reload();
+    }
+  };
+
+  return (
+    <div className="p-6 flex flex-col gap-6 animate-in fade-in duration-500 pb-24">
+      <h1 className="text-2xl font-black">Statistika</h1>
+      
+      <div className="flex flex-col gap-3">
+        {Object.entries(stats).length > 0 ? (
+          Object.entries(stats).reverse().map(([date, data]) => (
+            <Card key={date} className="flex justify-between items-center py-4">
+              <div className="flex flex-col">
+                <span className="font-bold text-sm">{date}</span>
+                <span className="text-[10px] text-slate-400 uppercase font-bold tracking-tighter">
+                  {data.answered} ta yechildi
+                </span>
+              </div>
+              <div className="text-right">
+                <span className="text-lg font-black text-indigo-500">
+                  {data.answered > 0 ? Math.round((data.correct / data.answered) * 100) : 0}%
+                </span>
+                <div className="text-[8px] uppercase text-slate-500">Aniqlik</div>
+              </div>
+            </Card>
+          ))
+        ) : (
+          <p className="text-center text-slate-400 py-10">Ma'lumotlar mavjud emas.</p>
+        )}
+      </div>
+
+      <Button onClick={handleReset} variant="danger" className="mt-10 shadow-lg shadow-rose-500/20">
+        Barcha ma'lumotlarni tozalash
+      </Button>
+    </div>
+  );
+};
