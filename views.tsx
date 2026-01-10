@@ -119,7 +119,7 @@ export const HomeView: React.FC<{
           <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
           </svg>
-          Hamma ma'lumotni o'chirish
+          Barcha ma'lumotlarni o'chirish
         </Button>
       </div>
 
@@ -245,6 +245,7 @@ export const ImportQuestionsView: React.FC<{ onBack: () => void }> = ({ onBack }
 export const ImportAnswersView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const [text, setText] = useState("");
   const [errors, setErrors] = useState<string[]>([]);
+  const [selectedBulk, setSelectedBulk] = useState<number | null>(null);
 
   const handleApply = () => {
     const { answers, errors: parseErrors } = parseAnswerKey(text);
@@ -273,6 +274,29 @@ export const ImportAnswersView: React.FC<{ onBack: () => void }> = ({ onBack }) 
     onBack();
   };
 
+  const handleBulkSet = (index: number) => {
+    const questions = getStoredQuestions();
+    if (questions.length === 0) {
+        alert("Avval savollarni yuklang!");
+        return;
+    }
+
+    setSelectedBulk(index);
+    const letter = String.fromCharCode(65 + index); // A, B, C, D
+    
+    // Kechikish bilan alert chiqarish (tugma rangi o'zgarganini ko'rish uchun)
+    setTimeout(() => {
+        if (confirm(`Barcha (${questions.length} ta) yuklangan savollar uchun to'g'ri javobni "${letter}" deb belgilashni tasdiqlaysizmi?`)) {
+          const updated = questions.map(q => ({ ...q, correctIndex: index as any }));
+          saveQuestions(updated);
+          alert(`Barcha savollar uchun to'g'ri javob "${letter}" deb belgilandi.`);
+          onBack();
+        } else {
+            setSelectedBulk(null);
+        }
+    }, 100);
+  };
+
   return (
     <div className="p-6 flex flex-col gap-6 pb-24 animate-in slide-in-from-right duration-300">
       <div className="flex items-center gap-4">
@@ -280,16 +304,40 @@ export const ImportAnswersView: React.FC<{ onBack: () => void }> = ({ onBack }) 
         <h1 className="text-2xl font-black">Javoblar Kaliti</h1>
       </div>
 
+      <div className="flex flex-col gap-3">
+        <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Hammasi bir xil javob (Tezkor):</h3>
+        <div className="grid grid-cols-4 gap-3">
+          {['A', 'B', 'C', 'D'].map((l, i) => {
+            const isActive = selectedBulk === i;
+            return (
+              <button 
+                key={l}
+                onClick={() => handleBulkSet(i)}
+                className={`h-16 rounded-2xl font-black border-2 transition-all duration-300 active:scale-90 flex items-center justify-center text-xl ${
+                  isActive 
+                  ? 'bg-green-600 text-white border-green-600 shadow-xl shadow-green-500/30 scale-105 z-10' 
+                  : 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 border-indigo-100 dark:border-indigo-800'
+                }`}
+              >
+                {l}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="h-[1px] bg-slate-200 dark:bg-slate-800 my-4" />
+
       <Card className="p-4 bg-blue-500/5 border-blue-500/20 text-xs text-blue-700 dark:text-blue-400 leading-relaxed">
-        Javoblarni quyidagi formatda joylang: <br/>
+        Har xil javoblar uchun quyidagi formatda joylang: <br/>
         <strong>1-a, 2-c, 3-b</strong> yoki har bir qatorda bittadan: <br/>
         <strong>1 A <br/> 2 B</strong>
       </Card>
 
       <div className="flex flex-col gap-1">
-        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Kalitlarni kiriting:</label>
+        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Kalitlarni matn orqali kiritish:</label>
         <textarea
-            className="w-full h-64 p-4 rounded-xl bg-slate-50 dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 text-sm focus:border-indigo-500 outline-none resize-none shadow-inner"
+            className="w-full h-48 p-4 rounded-xl bg-slate-50 dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 text-sm focus:border-indigo-500 outline-none resize-none shadow-inner"
             placeholder="Masalan: 1-a, 2-b, 3-c..."
             value={text}
             onChange={(e) => setText(e.target.value)}
@@ -297,7 +345,7 @@ export const ImportAnswersView: React.FC<{ onBack: () => void }> = ({ onBack }) 
       </div>
 
       <Button onClick={handleApply} variant="primary" className="h-16 shadow-lg shadow-indigo-500/20">
-        Javoblarni saqlash
+        Kalitni saqlash
       </Button>
       
       {errors.length > 0 && (
