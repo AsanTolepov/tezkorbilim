@@ -20,6 +20,7 @@ export const HomeView: React.FC<{
   const [rangeStart, setRangeStart] = useState<number>(1);
   const [rangeEnd, setRangeEnd] = useState<number>(25);
   const [isShuffle, setIsShuffle] = useState<boolean>(false);
+  const [isShuffleOptions, setIsShuffleOptions] = useState<boolean>(false);
 
   useEffect(() => {
     if (questions.length > 0) {
@@ -47,7 +48,12 @@ export const HomeView: React.FC<{
       alert("Noto'g'ri oraliq kiritildi.");
       return;
     }
-    onStartPractice(PracticeMode.RANGE, { start: rangeStart, end: rangeEnd, shuffle: isShuffle });
+    onStartPractice(PracticeMode.RANGE, { 
+      start: rangeStart, 
+      end: rangeEnd, 
+      shuffle: isShuffle,
+      shuffleOptions: isShuffleOptions 
+    });
     setShowRangeModal(false);
   };
 
@@ -78,7 +84,7 @@ export const HomeView: React.FC<{
       </div>
 
       <div className="flex flex-col gap-3">
-        <Button onClick={() => setShowRangeModal(true)} variant="primary" className="h-20 text-lg">
+        <Button onClick={() => setShowRangeModal(true)} variant="primary" className="h-20 text-lg" disabled={questions.length === 0}>
           Testni boshlash
         </Button>
         <div className="grid grid-cols-2 gap-3">
@@ -113,7 +119,7 @@ export const HomeView: React.FC<{
           <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
           </svg>
-          Yaratilgan testni o'chirish
+          Hamma ma'lumotni o'chirish
         </Button>
       </div>
 
@@ -143,15 +149,27 @@ export const HomeView: React.FC<{
                 />
               </div>
 
-              <label className="flex items-center gap-3 p-4 bg-slate-100 dark:bg-slate-800 rounded-xl cursor-pointer active:scale-95 transition-transform">
-                <input 
-                  type="checkbox" 
-                  checked={isShuffle}
-                  onChange={(e) => setIsShuffle(e.target.checked)}
-                  className="w-5 h-5 rounded accent-indigo-600"
-                />
-                <span className="font-bold text-sm">Savollarni aralashtirish</span>
-              </label>
+              <div className="flex flex-col gap-2">
+                 <label className="flex items-center gap-3 p-3 bg-slate-100 dark:bg-slate-800 rounded-xl cursor-pointer active:scale-95 transition-transform border border-transparent hover:border-indigo-500/30">
+                  <input 
+                    type="checkbox" 
+                    checked={isShuffle}
+                    onChange={(e) => setIsShuffle(e.target.checked)}
+                    className="w-5 h-5 rounded accent-indigo-600"
+                  />
+                  <span className="font-bold text-sm">Savollarni aralashtirish</span>
+                </label>
+
+                <label className="flex items-center gap-3 p-3 bg-slate-100 dark:bg-slate-800 rounded-xl cursor-pointer active:scale-95 transition-transform border border-transparent hover:border-indigo-500/30">
+                  <input 
+                    type="checkbox" 
+                    checked={isShuffleOptions}
+                    onChange={(e) => setIsShuffleOptions(e.target.checked)}
+                    className="w-5 h-5 rounded accent-indigo-600"
+                  />
+                  <span className="font-bold text-sm">Variantlarni aralashtirish</span>
+                </label>
+              </div>
             </div>
 
             <div className="flex gap-3">
@@ -192,8 +210,7 @@ export const ImportQuestionsView: React.FC<{ onBack: () => void }> = ({ onBack }
       </div>
 
       <Card className="p-4 bg-amber-500/5 border-amber-500/20 text-xs text-amber-700 dark:text-amber-400 leading-relaxed">
-        Word hujjatidan nusxa olingan matnni bu yerga qo'ying. <br/>
-        Format: <strong>1. Savol matni? a) var1 b) var2 c) var3 d) var4</strong>
+        Format: <strong>1. Savol? a) var1 b) var2 c) var3 d) var4</strong>
       </Card>
 
       <textarea
@@ -208,7 +225,7 @@ export const ImportQuestionsView: React.FC<{ onBack: () => void }> = ({ onBack }
       {errors.length > 0 && (
         <div className="flex flex-col gap-2">
           <h3 className="text-rose-500 font-bold text-sm">Xatolar ({errors.length}):</h3>
-          <div className="max-h-32 overflow-y-auto text-[10px] text-rose-400 bg-rose-500/5 p-2 rounded-lg no-scrollbar border border-rose-500/20">
+          <div className="max-h-32 overflow-y-auto text-[10px] text-rose-400 bg-rose-500/5 p-2 rounded-lg border border-rose-500/20">
             {errors.map((err, i) => <div key={i}>• {err}</div>)}
           </div>
         </div>
@@ -217,15 +234,6 @@ export const ImportQuestionsView: React.FC<{ onBack: () => void }> = ({ onBack }
       {preview.length > 0 && (
         <div className="flex flex-col gap-4 animate-in slide-in-from-bottom-4 duration-300">
           <h3 className="font-bold text-green-500">Muvaffaqiyatli: {preview.length} ta savol topildi</h3>
-          <div className="flex flex-col gap-2">
-            <h4 className="text-xs uppercase text-slate-400 font-bold">Dastlabki 3 ta savol ko'rinishi:</h4>
-            {preview.slice(0, 3).map(q => (
-              <div key={q.id} className="p-3 bg-slate-100 dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 text-xs">
-                <div className="font-bold">{q.number}. {q.prompt}</div>
-                <div className="text-slate-500 ml-4 mt-1">a) {q.options[0]} ...</div>
-              </div>
-            ))}
-          </div>
           <Button onClick={handleSave} variant="primary" className="h-16">Saqlash va Tasdiqlash</Button>
         </div>
       )}
@@ -246,6 +254,11 @@ export const ImportAnswersView: React.FC<{ onBack: () => void }> = ({ onBack }) 
     }
 
     const questions = getStoredQuestions();
+    if (questions.length === 0) {
+        alert("Avval savollarni yuklang!");
+        return;
+    }
+
     let updatedCount = 0;
     const updated = questions.map(q => {
       if (answers[q.id] !== undefined) {
@@ -260,17 +273,6 @@ export const ImportAnswersView: React.FC<{ onBack: () => void }> = ({ onBack }) 
     onBack();
   };
 
-  const handleBulkSet = (index: number) => {
-    const letter = String.fromCharCode(65 + index); // A, B, C, D
-    if (confirm(`Barcha yuklangan savollar uchun to'g'ri javobni "${letter}" deb belgilamoqchimisiz?`)) {
-      const questions = getStoredQuestions();
-      const updated = questions.map(q => ({ ...q, correctIndex: index as any }));
-      saveQuestions(updated);
-      alert(`Barcha (${questions.length} ta) savol uchun javob "${letter}" qilib belgilandi.`);
-      onBack();
-    }
-  };
-
   return (
     <div className="p-6 flex flex-col gap-6 pb-24 animate-in slide-in-from-right duration-300">
       <div className="flex items-center gap-4">
@@ -278,40 +280,30 @@ export const ImportAnswersView: React.FC<{ onBack: () => void }> = ({ onBack }) 
         <h1 className="text-2xl font-black">Javoblar Kaliti</h1>
       </div>
 
-      <div className="flex flex-col gap-3">
-        <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Tezkor tanlash (Barcha savollarga):</h3>
-        <div className="grid grid-cols-4 gap-2">
-          {['A', 'B', 'C', 'D'].map((l, i) => (
-            <button 
-              key={l}
-              onClick={() => handleBulkSet(i)}
-              className="h-12 rounded-xl bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 font-black border-2 border-indigo-200 dark:border-indigo-800 active:scale-90 transition-transform"
-            >
-              {l}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div className="h-[1px] bg-slate-200 dark:bg-slate-800 my-2" />
-
       <Card className="p-4 bg-blue-500/5 border-blue-500/20 text-xs text-blue-700 dark:text-blue-400 leading-relaxed">
         Javoblarni quyidagi formatda joylang: <br/>
         <strong>1-a, 2-c, 3-b</strong> yoki har bir qatorda bittadan: <br/>
         <strong>1 A <br/> 2 B</strong>
       </Card>
 
-      <textarea
-        className="w-full h-48 p-4 rounded-xl bg-slate-100 dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 text-sm focus:border-indigo-500 outline-none resize-none"
-        placeholder="1-a, 2-b, 3-c..."
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-      />
+      <div className="flex flex-col gap-1">
+        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Kalitlarni kiriting:</label>
+        <textarea
+            className="w-full h-64 p-4 rounded-xl bg-slate-50 dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 text-sm focus:border-indigo-500 outline-none resize-none shadow-inner"
+            placeholder="Masalan: 1-a, 2-b, 3-c..."
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+        />
+      </div>
 
-      <Button onClick={handleApply} variant="primary">Kalitni saqlash</Button>
+      <Button onClick={handleApply} variant="primary" className="h-16 shadow-lg shadow-indigo-500/20">
+        Javoblarni saqlash
+      </Button>
       
       {errors.length > 0 && (
-        <div className="text-rose-500 text-xs mt-2 bg-rose-500/10 p-3 rounded-lg border border-rose-500/20">{errors.length} ta xato topildi. Formatni tekshiring.</div>
+        <div className="text-rose-500 text-xs mt-2 bg-rose-500/10 p-3 rounded-lg border border-rose-500/20">
+            {errors.length} ta xato aniqlandi. Formatni tekshiring.
+        </div>
       )}
     </div>
   );
@@ -319,7 +311,7 @@ export const ImportAnswersView: React.FC<{ onBack: () => void }> = ({ onBack }) 
 
 // --- PRACTICE VIEW ---
 export const PracticeView: React.FC<{ mode: PracticeMode, range?: PracticeRange, onExit: () => void }> = ({ mode, range, onExit }) => {
-  const [questions, setQuestions] = useState<Question[]>([]);
+  const [questions, setQuestions] = useState<(Question & { displayOptions: string[], displayCorrectIdx?: number })[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
   const [isRevealed, setIsRevealed] = useState(false);
@@ -328,31 +320,47 @@ export const PracticeView: React.FC<{ mode: PracticeMode, range?: PracticeRange,
   useEffect(() => {
     let pool = getStoredQuestions();
     if (pool.length === 0) {
-      alert("Hali savollar yuklanmagan. Avval savollarni yuklang.");
+      alert("Savollar mavjud emas.");
       onExit();
       return;
     }
 
+    let filtered: Question[] = [];
     if (mode === PracticeMode.RANGE && range) {
-      pool = pool.filter(q => q.number >= range.start && q.number <= range.end);
+      filtered = pool.filter(q => q.number >= range.start && q.number <= range.end);
       if (range.shuffle) {
-        pool = [...pool].sort(() => Math.random() - 0.5);
+        filtered = [...filtered].sort(() => Math.random() - 0.5);
       }
     } else if (mode === PracticeMode.STARRED) {
-      pool = pool.filter(q => progress[q.id]?.starred);
+      filtered = pool.filter(q => progress[q.id]?.starred);
     } else if (mode === PracticeMode.WRONG) {
-      pool = pool.filter(q => progress[q.id]?.lastResult === 'wrong');
-    } else if (mode === PracticeMode.SMART) {
-      pool.sort((a, b) => {
-        const pA = progress[a.id];
-        const pB = progress[b.id];
-        if (pA?.starred !== pB?.starred) return pA?.starred ? -1 : 1;
-        if ((pA?.lastResult === 'wrong') !== (pB?.lastResult === 'wrong')) return pA?.lastResult === 'wrong' ? -1 : 1;
-        return (pA?.lastSeenAt || 0) - (pB?.lastSeenAt || 0);
-      });
+      filtered = pool.filter(q => progress[q.id]?.lastResult === 'wrong');
+    } else {
+      filtered = pool;
     }
 
-    setQuestions(pool);
+    const processed = filtered.map(q => {
+      if (range?.shuffleOptions) {
+        const optionsWithIdx = q.options.map((text, idx) => ({ text, idx }));
+        const shuffled = [...optionsWithIdx].sort(() => Math.random() - 0.5);
+        let newCorrectIdx: number | undefined = undefined;
+        if (q.correctIndex !== undefined) {
+          newCorrectIdx = shuffled.findIndex(item => item.idx === q.correctIndex);
+        }
+        return {
+          ...q,
+          displayOptions: shuffled.map(s => s.text),
+          displayCorrectIdx: newCorrectIdx
+        };
+      }
+      return {
+        ...q,
+        displayOptions: [...q.options],
+        displayCorrectIdx: q.correctIndex
+      };
+    });
+
+    setQuestions(processed);
   }, [mode, range]);
 
   const currentQ = questions[currentIndex];
@@ -361,8 +369,8 @@ export const PracticeView: React.FC<{ mode: PracticeMode, range?: PracticeRange,
     if (selectedIdx !== null) return;
     setSelectedIdx(idx);
 
-    if (currentQ.correctIndex !== undefined) {
-      const isCorrect = idx === currentQ.correctIndex;
+    if (currentQ.displayCorrectIdx !== undefined) {
+      const isCorrect = idx === currentQ.displayCorrectIdx;
       const newProg = updateProgress(currentQ.id, isCorrect ? 'correct' : 'wrong');
       setProgress(newProg);
       setIsRevealed(true);
@@ -395,7 +403,7 @@ export const PracticeView: React.FC<{ mode: PracticeMode, range?: PracticeRange,
 
   if (!currentQ) return null;
 
-  const hasAnswerKey = currentQ.correctIndex !== undefined;
+  const hasAnswerKey = currentQ.displayCorrectIdx !== undefined;
 
   return (
     <div className="flex flex-col h-screen max-h-screen overflow-hidden bg-white dark:bg-slate-950 animate-in slide-in-from-bottom duration-300">
@@ -403,7 +411,7 @@ export const PracticeView: React.FC<{ mode: PracticeMode, range?: PracticeRange,
         <div className="flex justify-between items-center">
           <button onClick={onExit} className="text-slate-400 p-2"><Icons.Back /></button>
           <div className="text-[10px] font-black uppercase text-slate-400 tracking-widest">
-            Mashq — {currentIndex + 1}/{questions.length}
+            {currentIndex + 1} / {questions.length}
           </div>
           <button onClick={toggleStar} className="p-2">
             <Icons.Star filled={progress[currentQ.id]?.starred} />
@@ -414,16 +422,16 @@ export const PracticeView: React.FC<{ mode: PracticeMode, range?: PracticeRange,
 
       <div className="flex-1 overflow-y-auto no-scrollbar px-6 pb-32">
         <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-8 leading-tight">
-          {currentQ.number}. {currentQ.prompt}
+          {currentIndex + 1}. {currentQ.prompt}
         </h2>
 
         <div className="flex flex-col gap-3">
-          {currentQ.options.map((opt, idx) => {
+          {currentQ.displayOptions.map((opt, idx) => {
             let stateClass = "bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200";
             
             if (selectedIdx !== null) {
               if (hasAnswerKey) {
-                if (idx === currentQ.correctIndex) {
+                if (idx === currentQ.displayCorrectIdx) {
                   stateClass = "bg-green-500/10 border-green-500 text-green-600 dark:text-green-400 ring-2 ring-green-500/30 font-bold";
                 } else if (idx === selectedIdx) {
                   stateClass = "bg-rose-500/10 border-rose-500 text-rose-600 dark:text-rose-400 ring-2 ring-rose-500/30";
@@ -459,7 +467,7 @@ export const PracticeView: React.FC<{ mode: PracticeMode, range?: PracticeRange,
         {selectedIdx !== null && !hasAnswerKey && !isRevealed && (
           <div className="mt-8 animate-in fade-in duration-300">
             <Button onClick={() => setIsRevealed(true)} variant="secondary" className="h-16">
-              Javobni ko'rish (Tekshirish)
+              Javobni ko'rish
             </Button>
           </div>
         )}
@@ -484,7 +492,7 @@ export const StatsView: React.FC = () => {
   const stats = getDailyStats();
   
   const handleReset = () => {
-    if (confirm("DIQQAT! Barcha yuklangan savollar va natijalar butunlay o'chib ketadi. Rozimisiz?")) {
+    if (confirm("Hamma natijalarni tozalashni xohlaysizmi?")) {
       resetAllData();
       window.location.reload();
     }
@@ -513,12 +521,12 @@ export const StatsView: React.FC = () => {
             </Card>
           ))
         ) : (
-          <p className="text-center text-slate-400 py-10">Ma'lumotlar mavjud emas.</p>
+          <p className="text-center text-slate-400 py-10">Hali ma'lumotlar yo'q.</p>
         )}
       </div>
 
-      <Button onClick={handleReset} variant="danger" className="mt-10 shadow-lg shadow-rose-500/20">
-        Barcha ma'lumotlarni tozalash
+      <Button onClick={handleReset} variant="danger" className="mt-10">
+        Barcha natijalarni o'chirish
       </Button>
     </div>
   );
