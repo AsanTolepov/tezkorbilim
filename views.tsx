@@ -18,14 +18,16 @@ export const HomeView: React.FC<{
 
   const [showRangeModal, setShowRangeModal] = useState(false);
   const [rangeStart, setRangeStart] = useState<number>(1);
-  const [rangeEnd, setRangeEnd] = useState<number>(25);
-  const [isShuffle, setIsShuffle] = useState<boolean>(false);
+  const [rangeEnd, setRangeEnd] = useState<number>(questions.length || 100);
+  const [questionCount, setQuestionCount] = useState<number>(25);
+  const [isShuffle, setIsShuffle] = useState<boolean>(true);
   const [isShuffleOptions, setIsShuffleOptions] = useState<boolean>(false);
   const [timeLimit, setTimeLimit] = useState<number>(0); 
 
   useEffect(() => {
     if (questions.length > 0) {
-      setRangeEnd(Math.min(25, questions.length));
+      setRangeEnd(questions.length);
+      setQuestionCount(Math.min(25, questions.length));
     }
   }, [questions.length]);
 
@@ -52,6 +54,7 @@ export const HomeView: React.FC<{
     onStartPractice(PracticeMode.RANGE, { 
       start: rangeStart, 
       end: rangeEnd, 
+      limit: questionCount,
       shuffle: isShuffle,
       shuffleOptions: isShuffleOptions,
       timeLimit: timeLimit > 0 ? timeLimit : undefined
@@ -61,50 +64,52 @@ export const HomeView: React.FC<{
 
   return (
     <div className="flex flex-col gap-6 p-6 pb-24 animate-in fade-in duration-500 relative">
-      <header>
-        <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">TezkorBilim</h1>
-        <p className="text-slate-500 text-sm">Vizual xotira orqali tezkor o'rganish</p>
+      <header className="flex justify-between items-start">
+        <div>
+          <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">TezkorBilim</h1>
+          <p className="text-slate-500 text-sm">Vizual xotira orqali o'rganish</p>
+        </div>
       </header>
 
       <div className="grid grid-cols-2 gap-3">
         <Card className="text-center py-4 px-2">
           <div className="text-2xl font-black text-indigo-600 dark:text-indigo-400">{questions.length}</div>
-          <div className="text-[10px] uppercase font-bold text-slate-400">Jami Savollar</div>
+          <div className="text-[10px] uppercase font-bold text-slate-400 tracking-tighter">Jami Savollar</div>
         </Card>
         <Card className="text-center py-4 px-2">
           <div className="text-2xl font-black text-amber-500">{meta.starred}</div>
-          <div className="text-[10px] uppercase font-bold text-slate-400">Tanlanganlar</div>
+          <div className="text-[10px] uppercase font-bold text-slate-400 tracking-tighter">Tanlanganlar</div>
         </Card>
         <Card className="text-center py-4 px-2">
           <div className="text-2xl font-black text-green-500">{todayStat.answered}</div>
-          <div className="text-[10px] uppercase font-bold text-slate-400">Bugun yechildi</div>
+          <div className="text-[10px] uppercase font-bold text-slate-400 tracking-tighter">Bugun yechildi</div>
         </Card>
         <Card className="text-center py-4 px-2">
           <div className="text-2xl font-black text-blue-500">{meta.accuracy}%</div>
-          <div className="text-[10px] uppercase font-bold text-slate-400">Bugungi aniqlik</div>
+          <div className="text-[10px] uppercase font-bold text-slate-400 tracking-tighter">Bugungi aniqlik</div>
         </Card>
       </div>
 
       <div className="flex flex-col gap-3">
-        <Button onClick={() => setShowRangeModal(true)} variant="primary" className="h-20 text-lg" disabled={questions.length === 0}>
-          Testni boshlash
+        <Button onClick={() => setShowRangeModal(true)} variant="primary" className="h-20 text-lg shadow-indigo-500/30" disabled={questions.length === 0}>
+           Testni Sozlash va Boshlash
         </Button>
         <div className="grid grid-cols-2 gap-3">
           <Button 
             onClick={() => onStartPractice(PracticeMode.STARRED)} 
             variant="ghost" 
-            className="border border-slate-200 dark:border-slate-800" 
+            className="border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900" 
             disabled={meta.starred === 0}
           >
-            Faqat Tanlanganlar
+            ⭐ Tanlanganlar
           </Button>
           <Button 
             onClick={() => onStartPractice(PracticeMode.WRONG)} 
             variant="ghost" 
-            className="border border-slate-200 dark:border-slate-800"
+            className="border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900"
             disabled={meta.wrongCount === 0}
           >
-            Faqat Xatolar
+            ❌ Xatolar
           </Button>
         </div>
       </div>
@@ -126,47 +131,93 @@ export const HomeView: React.FC<{
       </div>
 
       {showRangeModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-6 animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-3xl p-6 shadow-2xl scale-in-center overflow-y-auto max-h-[90vh] no-scrollbar">
-            <h2 className="text-xl font-black mb-4">Oraliqni tanlang</h2>
-            <p className="text-slate-500 text-sm mb-6">Mavjud savollar: 1 - {questions.length}</p>
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-md z-[100] flex items-end sm:items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-t-[2.5rem] sm:rounded-[2.5rem] p-8 shadow-2xl scale-in-center overflow-y-auto max-h-[90vh] no-scrollbar border-t-4 border-indigo-500 sm:border-t-0">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-black">Test Sozlamalari</h2>
+              <button onClick={() => setShowRangeModal(false)} className="text-slate-400 hover:text-slate-600"><Icons.Back /></button>
+            </div>
             
-            <div className="flex flex-col gap-4 mb-8">
-              <div className="grid grid-cols-2 gap-3">
-                <div className="flex flex-col gap-1">
-                  <label className="text-xs font-bold text-slate-400 uppercase">Dan:</label>
-                  <input 
-                    type="number" 
-                    value={rangeStart}
-                    onChange={(e) => setRangeStart(parseInt(e.target.value))}
-                    className="bg-slate-100 dark:bg-slate-800 p-4 rounded-xl border-none outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-bold"
-                  />
-                </div>
-                <div className="flex flex-col gap-1">
-                  <label className="text-xs font-bold text-slate-400 uppercase">Gacha:</label>
-                  <input 
-                    type="number" 
-                    value={rangeEnd}
-                    onChange={(e) => setRangeEnd(parseInt(e.target.value))}
-                    className="bg-slate-100 dark:bg-slate-800 p-4 rounded-xl border-none outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-bold"
-                  />
+            <div className="flex flex-col gap-6 mb-8">
+              {/* Range Selection */}
+              <div>
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Savollar oralig'i (1 - {questions.length}):</label>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="flex flex-col gap-1">
+                    <input 
+                      type="number" 
+                      value={rangeStart}
+                      onChange={(e) => setRangeStart(parseInt(e.target.value) || 1)}
+                      className="bg-slate-100 dark:bg-slate-800 p-4 rounded-2xl border-none outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-black text-center"
+                    />
+                    <span className="text-[9px] text-center text-slate-400 font-bold">DAN</span>
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <input 
+                      type="number" 
+                      value={rangeEnd}
+                      onChange={(e) => setRangeEnd(parseInt(e.target.value) || questions.length)}
+                      className="bg-slate-100 dark:bg-slate-800 p-4 rounded-2xl border-none outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-black text-center"
+                    />
+                    <span className="text-[9px] text-center text-slate-400 font-bold">GACHA</span>
+                  </div>
                 </div>
               </div>
 
-              <div className="flex flex-col gap-1">
-                <label className="text-xs font-bold text-slate-400 uppercase">Vaqt (daqiqa):</label>
+              {/* Count Selection */}
+              <div>
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Nechta savol yechasiz?</label>
+                <div className="flex gap-2 mb-3 overflow-x-auto no-scrollbar pb-1">
+                  {[25, 30, 50, 100].map(c => (
+                    <button 
+                      key={c}
+                      onClick={() => setQuestionCount(c)}
+                      className={`flex-shrink-0 px-4 py-2 rounded-xl text-xs font-black transition-all ${questionCount === c ? 'bg-indigo-600 text-white shadow-lg' : 'bg-slate-100 dark:bg-slate-800 text-slate-500'}`}
+                    >
+                      {c}
+                    </button>
+                  ))}
+                  <button 
+                    onClick={() => setQuestionCount(questions.length)}
+                    className={`flex-shrink-0 px-4 py-2 rounded-xl text-xs font-black transition-all ${questionCount === questions.length ? 'bg-indigo-600 text-white shadow-lg' : 'bg-slate-100 dark:bg-slate-800 text-slate-500'}`}
+                  >
+                    Hammasi
+                  </button>
+                </div>
                 <input 
                   type="number" 
-                  placeholder="Cheksiz"
-                  value={timeLimit || ''}
-                  onChange={(e) => setTimeLimit(parseInt(e.target.value) || 0)}
-                  className="bg-slate-100 dark:bg-slate-800 p-4 rounded-xl border-none outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-bold"
+                  value={questionCount}
+                  onChange={(e) => setQuestionCount(parseInt(e.target.value) || 1)}
+                  className="w-full bg-slate-100 dark:bg-slate-800 p-4 rounded-2xl border-none outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-black text-center"
                 />
-                <p className="text-[10px] text-slate-400">0 kiritsangiz vaqt cheksiz bo'ladi</p>
               </div>
 
+              {/* Time Selection */}
+              <div>
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Vaqt chegarasi (daqiqa):</label>
+                <div className="flex gap-2 mb-3 overflow-x-auto no-scrollbar pb-1">
+                  {[5, 15, 30, 60].map(m => (
+                    <button 
+                      key={m}
+                      onClick={() => setTimeLimit(m)}
+                      className={`flex-shrink-0 px-4 py-2 rounded-xl text-xs font-black transition-all ${timeLimit === m ? 'bg-blue-600 text-white shadow-lg' : 'bg-slate-100 dark:bg-slate-800 text-slate-500'}`}
+                    >
+                      {m} m
+                    </button>
+                  ))}
+                </div>
+                <input 
+                  type="number" 
+                  placeholder="Vaqt cheksiz (0)"
+                  value={timeLimit || ''}
+                  onChange={(e) => setTimeLimit(parseInt(e.target.value) || 0)}
+                  className="w-full bg-slate-100 dark:bg-slate-800 p-4 rounded-2xl border-none outline-none focus:ring-2 focus:ring-blue-500 transition-all font-black text-center"
+                />
+              </div>
+
+              {/* Toggles */}
               <div className="flex flex-col gap-2">
-                 <label className="flex items-center gap-3 p-3 bg-slate-100 dark:bg-slate-800 rounded-xl cursor-pointer active:scale-95 transition-transform border border-transparent hover:border-indigo-500/30">
+                 <label className="flex items-center gap-3 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl cursor-pointer active:scale-95 transition-transform border border-slate-100 dark:border-slate-800">
                   <input 
                     type="checkbox" 
                     checked={isShuffle}
@@ -176,7 +227,7 @@ export const HomeView: React.FC<{
                   <span className="font-bold text-sm">Savollarni aralashtirish</span>
                 </label>
 
-                <label className="flex items-center gap-3 p-3 bg-slate-100 dark:bg-slate-800 rounded-xl cursor-pointer active:scale-95 transition-transform border border-transparent hover:border-indigo-500/30">
+                <label className="flex items-center gap-3 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl cursor-pointer active:scale-95 transition-transform border border-slate-100 dark:border-slate-800">
                   <input 
                     type="checkbox" 
                     checked={isShuffleOptions}
@@ -188,10 +239,9 @@ export const HomeView: React.FC<{
               </div>
             </div>
 
-            <div className="flex gap-3">
-              <Button onClick={() => setShowRangeModal(false)} variant="ghost" className="flex-1">Bekor qilish</Button>
-              <Button onClick={handleRangeSubmit} variant="primary" className="flex-1 shadow-indigo-500/20 shadow-lg">Boshlash</Button>
-            </div>
+            <Button onClick={handleRangeSubmit} variant="primary" className="h-16 text-lg shadow-xl shadow-indigo-500/20">
+              Boshlash
+            </Button>
           </div>
         </div>
       )}
@@ -388,6 +438,7 @@ export const PracticeView: React.FC<{
   // Session Stats
   const [sessionResults, setSessionResults] = useState({ correct: 0, wrong: 0 });
   const startTimeRef = useRef(Date.now());
+  const autoNextTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Timer State
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
@@ -406,7 +457,9 @@ export const PracticeView: React.FC<{
       if (range.shuffle) {
         filtered = [...filtered].sort(() => Math.random() - 0.5);
       }
-      
+      if (range.limit && range.limit > 0) {
+        filtered = filtered.slice(0, range.limit);
+      }
       if (range.timeLimit) {
         setTimeLeft(range.timeLimit * 60);
       }
@@ -440,9 +493,14 @@ export const PracticeView: React.FC<{
     });
 
     setQuestions(processed);
+
+    return () => {
+      if (autoNextTimerRef.current) clearTimeout(autoNextTimerRef.current);
+    };
   }, [mode, range]);
 
   const finishQuiz = () => {
+    if (autoNextTimerRef.current) clearTimeout(autoNextTimerRef.current);
     const duration = Math.floor((Date.now() - startTimeRef.current) / 1000);
     onFinish({
       ...sessionResults,
@@ -475,6 +533,26 @@ export const PracticeView: React.FC<{
 
   const currentQ = questions[currentIndex];
 
+  const handleNext = () => {
+    if (autoNextTimerRef.current) clearTimeout(autoNextTimerRef.current);
+    if (currentIndex < questions.length - 1) {
+      setCurrentIndex(currentIndex + 1);
+      setSelectedIdx(null);
+      setIsRevealed(false);
+    } else {
+      finishQuiz();
+    }
+  };
+
+  const handlePrev = () => {
+    if (autoNextTimerRef.current) clearTimeout(autoNextTimerRef.current);
+    if (currentIndex > 0) {
+      setCurrentIndex(currentIndex - 1);
+      setSelectedIdx(null);
+      setIsRevealed(false);
+    }
+  };
+
   const handleSelect = (idx: number) => {
     if (selectedIdx !== null) return;
     setSelectedIdx(idx);
@@ -489,24 +567,11 @@ export const PracticeView: React.FC<{
         correct: isCorrect ? prev.correct + 1 : prev.correct,
         wrong: !isCorrect ? prev.wrong + 1 : prev.wrong
       }));
-    }
-  };
 
-  const handleNext = () => {
-    if (currentIndex < questions.length - 1) {
-      setCurrentIndex(currentIndex + 1);
-      setSelectedIdx(null);
-      setIsRevealed(false);
-    } else {
-      finishQuiz();
-    }
-  };
-
-  const handlePrev = () => {
-    if (currentIndex > 0) {
-      setCurrentIndex(currentIndex - 1);
-      setSelectedIdx(null);
-      setIsRevealed(false);
+      // Avtomatik keyingisiga o'tish (2 soniyadan keyin)
+      autoNextTimerRef.current = setTimeout(() => {
+        handleNext();
+      }, 2000);
     }
   };
 
@@ -596,16 +661,7 @@ export const PracticeView: React.FC<{
           </div>
         )}
 
-        {(isRevealed || (selectedIdx !== null && hasAnswerKey)) && (
-          <div className="mt-8 flex gap-3 animate-in fade-in slide-in-from-top-4">
-             <Button onClick={handlePrev} variant="ghost" className="border border-slate-200 dark:border-slate-800 h-16 w-1/3" disabled={currentIndex === 0}>
-              Orqaga
-            </Button>
-            <Button onClick={handleNext} variant="primary" className="h-16 flex-1 shadow-lg shadow-indigo-500/20">
-              {currentIndex === questions.length - 1 ? "Tugatish" : "Keyingisi"}
-            </Button>
-          </div>
-        )}
+        {/* Manual navigatsiya tugmalari (Orqaga/Keyingisi) olib tashlandi - Tezkor tajriba uchun */}
       </div>
     </div>
   );
@@ -637,19 +693,19 @@ export const ResultsView: React.FC<{
       <div className="grid grid-cols-2 gap-4 w-full mb-10">
         <Card className="text-center p-4">
           <div className="text-2xl font-black text-indigo-500">{results.total}</div>
-          <div className="text-[10px] uppercase font-bold text-slate-400">Jami savollar</div>
+          <div className="text-[10px] uppercase font-bold text-slate-400 tracking-tighter">Jami savollar</div>
         </Card>
         <Card className="text-center p-4">
           <div className="text-2xl font-black text-green-500">{results.correct}</div>
-          <div className="text-[10px] uppercase font-bold text-slate-400">To'g'ri</div>
+          <div className="text-[10px] uppercase font-bold text-slate-400 tracking-tighter">To'g'ri</div>
         </Card>
         <Card className="text-center p-4">
           <div className="text-2xl font-black text-rose-500">{results.wrong}</div>
-          <div className="text-[10px] uppercase font-bold text-slate-400">Xato</div>
+          <div className="text-[10px] uppercase font-bold text-slate-400 tracking-tighter">Xato</div>
         </Card>
         <Card className="text-center p-4">
           <div className="text-2xl font-black text-blue-500">{formatTime(results.timeSpent)}</div>
-          <div className="text-[10px] uppercase font-bold text-slate-400">Sarflangan vaqt</div>
+          <div className="text-[10px] uppercase font-bold text-slate-400 tracking-tighter">Vaqt</div>
         </Card>
       </div>
 

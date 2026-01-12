@@ -20,6 +20,7 @@ export type ProgressMap = Record<string, Progress>;
 export type PracticeRange = {
   start: number;
   end: number;
+  limit?: number;        // maximum number of questions to pick
   shuffle?: boolean;
   shuffleOptions?: boolean;
   timeLimit?: number; // minutes
