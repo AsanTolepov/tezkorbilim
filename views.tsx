@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { AppScreen, PracticeMode, Question, ProgressMap, Progress, PracticeRange } from './types';
 import { Card, Button, ProgressBar, Icons } from './components';
 import { getStoredQuestions, getStoredProgress, updateProgress, saveQuestions, saveProgress, resetAllData, getDailyStats } from './store';
@@ -21,6 +21,7 @@ export const HomeView: React.FC<{
   const [rangeEnd, setRangeEnd] = useState<number>(25);
   const [isShuffle, setIsShuffle] = useState<boolean>(false);
   const [isShuffleOptions, setIsShuffleOptions] = useState<boolean>(false);
+  const [timeLimit, setTimeLimit] = useState<number>(0); 
 
   useEffect(() => {
     if (questions.length > 0) {
@@ -52,7 +53,8 @@ export const HomeView: React.FC<{
       start: rangeStart, 
       end: rangeEnd, 
       shuffle: isShuffle,
-      shuffleOptions: isShuffleOptions 
+      shuffleOptions: isShuffleOptions,
+      timeLimit: timeLimit > 0 ? timeLimit : undefined
     });
     setShowRangeModal(false);
   };
@@ -125,28 +127,42 @@ export const HomeView: React.FC<{
 
       {showRangeModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-6 animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-3xl p-6 shadow-2xl scale-in-center">
+          <div className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-3xl p-6 shadow-2xl scale-in-center overflow-y-auto max-h-[90vh] no-scrollbar">
             <h2 className="text-xl font-black mb-4">Oraliqni tanlang</h2>
             <p className="text-slate-500 text-sm mb-6">Mavjud savollar: 1 - {questions.length}</p>
             
             <div className="flex flex-col gap-4 mb-8">
-              <div className="flex flex-col gap-1">
-                <label className="text-xs font-bold text-slate-400 uppercase">Dan:</label>
-                <input 
-                  type="number" 
-                  value={rangeStart}
-                  onChange={(e) => setRangeStart(parseInt(e.target.value))}
-                  className="bg-slate-100 dark:bg-slate-800 p-4 rounded-xl border-none outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-bold"
-                />
+              <div className="grid grid-cols-2 gap-3">
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-bold text-slate-400 uppercase">Dan:</label>
+                  <input 
+                    type="number" 
+                    value={rangeStart}
+                    onChange={(e) => setRangeStart(parseInt(e.target.value))}
+                    className="bg-slate-100 dark:bg-slate-800 p-4 rounded-xl border-none outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-bold"
+                  />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-bold text-slate-400 uppercase">Gacha:</label>
+                  <input 
+                    type="number" 
+                    value={rangeEnd}
+                    onChange={(e) => setRangeEnd(parseInt(e.target.value))}
+                    className="bg-slate-100 dark:bg-slate-800 p-4 rounded-xl border-none outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-bold"
+                  />
+                </div>
               </div>
+
               <div className="flex flex-col gap-1">
-                <label className="text-xs font-bold text-slate-400 uppercase">Gacha:</label>
+                <label className="text-xs font-bold text-slate-400 uppercase">Vaqt (daqiqa):</label>
                 <input 
                   type="number" 
-                  value={rangeEnd}
-                  onChange={(e) => setRangeEnd(parseInt(e.target.value))}
+                  placeholder="Cheksiz"
+                  value={timeLimit || ''}
+                  onChange={(e) => setTimeLimit(parseInt(e.target.value) || 0)}
                   className="bg-slate-100 dark:bg-slate-800 p-4 rounded-xl border-none outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-bold"
                 />
+                <p className="text-[10px] text-slate-400">0 kiritsangiz vaqt cheksiz bo'ladi</p>
               </div>
 
               <div className="flex flex-col gap-2">
@@ -284,7 +300,6 @@ export const ImportAnswersView: React.FC<{ onBack: () => void }> = ({ onBack }) 
     setSelectedBulk(index);
     const letter = String.fromCharCode(65 + index); // A, B, C, D
     
-    // Kechikish bilan alert chiqarish (tugma rangi o'zgarganini ko'rish uchun)
     setTimeout(() => {
         if (confirm(`Barcha (${questions.length} ta) yuklangan savollar uchun to'g'ri javobni "${letter}" deb belgilashni tasdiqlaysizmi?`)) {
           const updated = questions.map(q => ({ ...q, correctIndex: index as any }));
@@ -358,12 +373,24 @@ export const ImportAnswersView: React.FC<{ onBack: () => void }> = ({ onBack }) 
 };
 
 // --- PRACTICE VIEW ---
-export const PracticeView: React.FC<{ mode: PracticeMode, range?: PracticeRange, onExit: () => void }> = ({ mode, range, onExit }) => {
+export const PracticeView: React.FC<{ 
+  mode: PracticeMode, 
+  range?: PracticeRange, 
+  onExit: () => void,
+  onFinish: (results: { correct: number, wrong: number, total: number, timeSpent: number }) => void 
+}> = ({ mode, range, onExit, onFinish }) => {
   const [questions, setQuestions] = useState<(Question & { displayOptions: string[], displayCorrectIdx?: number })[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
   const [isRevealed, setIsRevealed] = useState(false);
   const [progress, setProgress] = useState<ProgressMap>(getStoredProgress());
+  
+  // Session Stats
+  const [sessionResults, setSessionResults] = useState({ correct: 0, wrong: 0 });
+  const startTimeRef = useRef(Date.now());
+
+  // Timer State
+  const [timeLeft, setTimeLeft] = useState<number | null>(null);
 
   useEffect(() => {
     let pool = getStoredQuestions();
@@ -378,6 +405,10 @@ export const PracticeView: React.FC<{ mode: PracticeMode, range?: PracticeRange,
       filtered = pool.filter(q => q.number >= range.start && q.number <= range.end);
       if (range.shuffle) {
         filtered = [...filtered].sort(() => Math.random() - 0.5);
+      }
+      
+      if (range.timeLimit) {
+        setTimeLeft(range.timeLimit * 60);
       }
     } else if (mode === PracticeMode.STARRED) {
       filtered = pool.filter(q => progress[q.id]?.starred);
@@ -411,6 +442,37 @@ export const PracticeView: React.FC<{ mode: PracticeMode, range?: PracticeRange,
     setQuestions(processed);
   }, [mode, range]);
 
+  const finishQuiz = () => {
+    const duration = Math.floor((Date.now() - startTimeRef.current) / 1000);
+    onFinish({
+      ...sessionResults,
+      total: questions.length,
+      timeSpent: duration
+    });
+  };
+
+  // Timer Logic
+  useEffect(() => {
+    if (timeLeft === null) return;
+    if (timeLeft <= 0) {
+      alert("Vaqt tugadi!");
+      finishQuiz();
+      return;
+    }
+
+    const timer = setInterval(() => {
+      setTimeLeft(prev => (prev !== null ? prev - 1 : null));
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [timeLeft]);
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
   const currentQ = questions[currentIndex];
 
   const handleSelect = (idx: number) => {
@@ -422,6 +484,11 @@ export const PracticeView: React.FC<{ mode: PracticeMode, range?: PracticeRange,
       const newProg = updateProgress(currentQ.id, isCorrect ? 'correct' : 'wrong');
       setProgress(newProg);
       setIsRevealed(true);
+      
+      setSessionResults(prev => ({
+        correct: isCorrect ? prev.correct + 1 : prev.correct,
+        wrong: !isCorrect ? prev.wrong + 1 : prev.wrong
+      }));
     }
   };
 
@@ -431,7 +498,7 @@ export const PracticeView: React.FC<{ mode: PracticeMode, range?: PracticeRange,
       setSelectedIdx(null);
       setIsRevealed(false);
     } else {
-      onExit();
+      finishQuiz();
     }
   };
 
@@ -458,9 +525,18 @@ export const PracticeView: React.FC<{ mode: PracticeMode, range?: PracticeRange,
       <div className="p-4 flex flex-col gap-3">
         <div className="flex justify-between items-center">
           <button onClick={onExit} className="text-slate-400 p-2"><Icons.Back /></button>
-          <div className="text-[10px] font-black uppercase text-slate-400 tracking-widest">
-            {currentIndex + 1} / {questions.length}
+          
+          <div className="flex items-center gap-4">
+             {timeLeft !== null && (
+                <div className={`px-3 py-1 rounded-full font-black text-xs tabular-nums border ${timeLeft < 60 ? 'bg-rose-500/10 border-rose-500 text-rose-500 animate-pulse' : 'bg-slate-100 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400'}`}>
+                   ⏱️ {formatTime(timeLeft)}
+                </div>
+             )}
+             <div className="text-[10px] font-black uppercase text-slate-400 tracking-widest">
+                {currentIndex + 1} / {questions.length}
+             </div>
           </div>
+
           <button onClick={toggleStar} className="p-2">
             <Icons.Star filled={progress[currentQ.id]?.starred} />
           </button>
@@ -530,6 +606,61 @@ export const PracticeView: React.FC<{ mode: PracticeMode, range?: PracticeRange,
             </Button>
           </div>
         )}
+      </div>
+    </div>
+  );
+};
+
+// --- RESULTS VIEW ---
+export const ResultsView: React.FC<{ 
+  results: { correct: number, wrong: number, total: number, timeSpent: number },
+  onHome: () => void 
+}> = ({ results, onHome }) => {
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return mins > 0 ? `${mins} m ${secs} s` : `${secs} s`;
+  };
+
+  const accuracy = results.total > 0 ? Math.round((results.correct / results.total) * 100) : 0;
+
+  return (
+    <div className="flex flex-col items-center justify-center p-8 min-h-screen bg-white dark:bg-slate-950 animate-in fade-in duration-700">
+      <div className="mb-8 text-center">
+        <div className={`w-24 h-24 mx-auto rounded-full flex items-center justify-center text-4xl mb-4 ${accuracy > 70 ? 'bg-green-500/10 text-green-500' : 'bg-amber-500/10 text-amber-500'}`}>
+          {accuracy > 70 ? '🏆' : '💪'}
+        </div>
+        <h1 className="text-3xl font-black">Test Yakunlandi!</h1>
+        <p className="text-slate-500">Natijalaringiz bilan tanishing</p>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4 w-full mb-10">
+        <Card className="text-center p-4">
+          <div className="text-2xl font-black text-indigo-500">{results.total}</div>
+          <div className="text-[10px] uppercase font-bold text-slate-400">Jami savollar</div>
+        </Card>
+        <Card className="text-center p-4">
+          <div className="text-2xl font-black text-green-500">{results.correct}</div>
+          <div className="text-[10px] uppercase font-bold text-slate-400">To'g'ri</div>
+        </Card>
+        <Card className="text-center p-4">
+          <div className="text-2xl font-black text-rose-500">{results.wrong}</div>
+          <div className="text-[10px] uppercase font-bold text-slate-400">Xato</div>
+        </Card>
+        <Card className="text-center p-4">
+          <div className="text-2xl font-black text-blue-500">{formatTime(results.timeSpent)}</div>
+          <div className="text-[10px] uppercase font-bold text-slate-400">Sarflangan vaqt</div>
+        </Card>
+      </div>
+
+      <div className="w-full max-w-xs space-y-3">
+        <div className="text-center mb-6">
+           <div className="text-4xl font-black text-slate-900 dark:text-white mb-1">{accuracy}%</div>
+           <div className="text-xs font-bold text-slate-400 uppercase tracking-widest">Umumiy Aniqlik</div>
+        </div>
+        <Button onClick={onHome} variant="primary" className="h-16">
+          Asosiy ekranga qaytish
+        </Button>
       </div>
     </div>
   );

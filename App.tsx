@@ -2,12 +2,14 @@
 import React, { useState, useEffect } from 'react';
 import { AppScreen, PracticeMode, PracticeRange } from './types';
 import { BottomNav } from './components';
-import { HomeView, PracticeView, StatsView, ImportQuestionsView, ImportAnswersView } from './views';
+import { HomeView, PracticeView, StatsView, ImportQuestionsView, ImportAnswersView, ResultsView } from './views';
 
 const App: React.FC = () => {
   const [currentScreen, setCurrentScreen] = useState<AppScreen>(AppScreen.HOME);
   const [practiceMode, setPracticeMode] = useState<PracticeMode>(PracticeMode.SMART);
   const [practiceRange, setPracticeRange] = useState<PracticeRange | undefined>(undefined);
+  const [lastResults, setLastResults] = useState<{ correct: number, wrong: number, total: number, timeSpent: number } | null>(null);
+  
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     const saved = localStorage.getItem('rl_theme');
     return (saved as 'light' | 'dark') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
@@ -26,13 +28,20 @@ const App: React.FC = () => {
 
   const navigateTo = (screen: AppScreen) => {
     setCurrentScreen(screen);
-    setPracticeRange(undefined);
+    if (screen !== AppScreen.RESULTS) {
+      setPracticeRange(undefined);
+    }
   };
 
   const startPractice = (mode: PracticeMode, range?: PracticeRange) => {
     setPracticeMode(mode);
     setPracticeRange(range);
     setCurrentScreen(AppScreen.PRACTICE);
+  };
+
+  const finishPractice = (results: { correct: number, wrong: number, total: number, timeSpent: number }) => {
+    setLastResults(results);
+    setCurrentScreen(AppScreen.RESULTS);
   };
 
   const renderScreen = () => {
@@ -44,7 +53,14 @@ const App: React.FC = () => {
       case AppScreen.IMPORT_ANSWERS:
         return <ImportAnswersView onBack={() => navigateTo(AppScreen.HOME)} />;
       case AppScreen.PRACTICE:
-        return <PracticeView mode={practiceMode} range={practiceRange} onExit={() => navigateTo(AppScreen.HOME)} />;
+        return <PracticeView 
+          mode={practiceMode} 
+          range={practiceRange} 
+          onExit={() => navigateTo(AppScreen.HOME)}
+          onFinish={finishPractice}
+        />;
+      case AppScreen.RESULTS:
+        return lastResults ? <ResultsView results={lastResults} onHome={() => navigateTo(AppScreen.HOME)} /> : <HomeView onNavigate={navigateTo} onStartPractice={startPractice} />;
       case AppScreen.STATS:
         return <StatsView />;
       default:

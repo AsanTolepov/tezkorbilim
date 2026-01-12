@@ -21,6 +21,8 @@ export type PracticeRange = {
   start: number;
   end: number;
   shuffle?: boolean;
+  shuffleOptions?: boolean;
+  timeLimit?: number; // minutes
 };
 
 export enum AppScreen {
@@ -28,7 +30,8 @@ export enum AppScreen {
   PRACTICE = 'PRACTICE',
   STATS = 'STATS',
   IMPORT_QUESTIONS = 'IMPORT_QUESTIONS',
-  IMPORT_ANSWERS = 'IMPORT_ANSWERS'
+  IMPORT_ANSWERS = 'IMPORT_ANSWERS',
+  RESULTS = 'RESULTS'
 }
 
 export enum PracticeMode {
