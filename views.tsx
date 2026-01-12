@@ -47,10 +47,6 @@ export const HomeView: React.FC<{
   };
 
   const handleRangeSubmit = () => {
-    if (rangeStart < 1 || rangeEnd > questions.length || rangeStart > rangeEnd) {
-      alert("Noto'g'ri oraliq kiritildi.");
-      return;
-    }
     onStartPractice(PracticeMode.RANGE, { 
       start: rangeStart, 
       end: rangeEnd, 
@@ -135,7 +131,7 @@ export const HomeView: React.FC<{
           <div className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-t-[2.5rem] sm:rounded-[2.5rem] p-8 shadow-2xl scale-in-center overflow-y-auto max-h-[90vh] no-scrollbar border-t-4 border-indigo-500 sm:border-t-0">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-2xl font-black">Test Sozlamalari</h2>
-              <button onClick={() => setShowRangeModal(false)} className="text-slate-400 hover:text-slate-600"><Icons.Back /></button>
+              <button onClick={() => setShowRangeModal(false)} className="text-slate-400 hover:text-slate-600 p-2"><Icons.Back /></button>
             </div>
             
             <div className="flex flex-col gap-6 mb-8">
@@ -147,7 +143,7 @@ export const HomeView: React.FC<{
                     <input 
                       type="number" 
                       value={rangeStart}
-                      onChange={(e) => setRangeStart(parseInt(e.target.value) || 1)}
+                      onChange={(e) => setRangeStart(parseInt(e.target.value) || 0)}
                       className="bg-slate-100 dark:bg-slate-800 p-4 rounded-2xl border-none outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-black text-center"
                     />
                     <span className="text-[9px] text-center text-slate-400 font-bold">DAN</span>
@@ -156,7 +152,7 @@ export const HomeView: React.FC<{
                     <input 
                       type="number" 
                       value={rangeEnd}
-                      onChange={(e) => setRangeEnd(parseInt(e.target.value) || questions.length)}
+                      onChange={(e) => setRangeEnd(parseInt(e.target.value) || 0)}
                       className="bg-slate-100 dark:bg-slate-800 p-4 rounded-2xl border-none outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-black text-center"
                     />
                     <span className="text-[9px] text-center text-slate-400 font-bold">GACHA</span>
@@ -165,10 +161,19 @@ export const HomeView: React.FC<{
               </div>
 
               {/* Count Selection */}
-              <div>
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Nechta savol yechasiz?</label>
-                <div className="flex gap-2 mb-3 overflow-x-auto no-scrollbar pb-1">
-                  {[25, 30, 50, 100].map(c => (
+              <div className="relative">
+                <div className="flex justify-between items-center mb-2">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Nechta savol yechasiz?</label>
+                  <input 
+                    type="number" 
+                    value={questionCount === 0 ? "" : questionCount}
+                    placeholder="0"
+                    onChange={(e) => setQuestionCount(e.target.value === '' ? 0 : parseInt(e.target.value))}
+                    className="w-20 bg-indigo-50 dark:bg-indigo-900/30 p-2 rounded-lg border border-indigo-200 dark:border-indigo-800 outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-black text-center text-indigo-600 dark:text-indigo-400"
+                  />
+                </div>
+                <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
+                  {[25, 50, 100].map(c => (
                     <button 
                       key={c}
                       onClick={() => setQuestionCount(c)}
@@ -184,19 +189,22 @@ export const HomeView: React.FC<{
                     Hammasi
                   </button>
                 </div>
-                <input 
-                  type="number" 
-                  value={questionCount}
-                  onChange={(e) => setQuestionCount(parseInt(e.target.value) || 1)}
-                  className="w-full bg-slate-100 dark:bg-slate-800 p-4 rounded-2xl border-none outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-black text-center"
-                />
               </div>
 
               {/* Time Selection */}
               <div>
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Vaqt chegarasi (daqiqa):</label>
+                <div className="flex justify-between items-center mb-2">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Vaqt chegarasi (daqiqa):</label>
+                  <input 
+                    type="number" 
+                    placeholder="0"
+                    value={timeLimit === 0 ? "" : timeLimit}
+                    onChange={(e) => setTimeLimit(e.target.value === '' ? 0 : parseInt(e.target.value))}
+                    className="w-20 bg-blue-50 dark:bg-blue-900/30 p-2 rounded-lg border border-blue-200 dark:border-blue-800 outline-none focus:ring-2 focus:ring-blue-500 transition-all font-black text-center text-blue-600 dark:text-blue-400"
+                  />
+                </div>
                 <div className="flex gap-2 mb-3 overflow-x-auto no-scrollbar pb-1">
-                  {[5, 15, 30, 60].map(m => (
+                  {[5, 30, 60].map(m => (
                     <button 
                       key={m}
                       onClick={() => setTimeLimit(m)}
@@ -205,14 +213,13 @@ export const HomeView: React.FC<{
                       {m} m
                     </button>
                   ))}
+                  <button 
+                    onClick={() => setTimeLimit(0)}
+                    className={`flex-shrink-0 px-4 py-2 rounded-xl text-xs font-black transition-all ${timeLimit === 0 ? 'bg-slate-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-500'}`}
+                  >
+                    Cheksiz
+                  </button>
                 </div>
-                <input 
-                  type="number" 
-                  placeholder="Vaqt cheksiz (0)"
-                  value={timeLimit || ''}
-                  onChange={(e) => setTimeLimit(parseInt(e.target.value) || 0)}
-                  className="w-full bg-slate-100 dark:bg-slate-800 p-4 rounded-2xl border-none outline-none focus:ring-2 focus:ring-blue-500 transition-all font-black text-center"
-                />
               </div>
 
               {/* Toggles */}
@@ -427,7 +434,7 @@ export const PracticeView: React.FC<{
   mode: PracticeMode, 
   range?: PracticeRange, 
   onExit: () => void,
-  onFinish: (results: { correct: number, wrong: number, total: number, timeSpent: number }) => void 
+  onFinish: (results: { correct: number, wrong: number, total: number, timeSpent: number, unkeyed: number }) => void 
 }> = ({ mode, range, onExit, onFinish }) => {
   const [questions, setQuestions] = useState<(Question & { displayOptions: string[], displayCorrectIdx?: number })[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -436,7 +443,7 @@ export const PracticeView: React.FC<{
   const [progress, setProgress] = useState<ProgressMap>(getStoredProgress());
   
   // Session Stats
-  const [sessionResults, setSessionResults] = useState({ correct: 0, wrong: 0 });
+  const [sessionResults, setSessionResults] = useState({ correct: 0, wrong: 0, unkeyed: 0 });
   const startTimeRef = useRef(Date.now());
   const autoNextTimerRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -499,11 +506,12 @@ export const PracticeView: React.FC<{
     };
   }, [mode, range]);
 
-  const finishQuiz = () => {
+  const finishQuiz = (finalResults?: typeof sessionResults) => {
     if (autoNextTimerRef.current) clearTimeout(autoNextTimerRef.current);
     const duration = Math.floor((Date.now() - startTimeRef.current) / 1000);
+    const res = finalResults || sessionResults;
     onFinish({
-      ...sessionResults,
+      ...res,
       total: questions.length,
       timeSpent: duration
     });
@@ -533,23 +541,14 @@ export const PracticeView: React.FC<{
 
   const currentQ = questions[currentIndex];
 
-  const handleNext = () => {
+  const handleNext = (finalResults?: typeof sessionResults) => {
     if (autoNextTimerRef.current) clearTimeout(autoNextTimerRef.current);
     if (currentIndex < questions.length - 1) {
       setCurrentIndex(currentIndex + 1);
       setSelectedIdx(null);
       setIsRevealed(false);
     } else {
-      finishQuiz();
-    }
-  };
-
-  const handlePrev = () => {
-    if (autoNextTimerRef.current) clearTimeout(autoNextTimerRef.current);
-    if (currentIndex > 0) {
-      setCurrentIndex(currentIndex - 1);
-      setSelectedIdx(null);
-      setIsRevealed(false);
+      finishQuiz(finalResults);
     }
   };
 
@@ -557,22 +556,29 @@ export const PracticeView: React.FC<{
     if (selectedIdx !== null) return;
     setSelectedIdx(idx);
 
+    let nextStats = { ...sessionResults };
+
     if (currentQ.displayCorrectIdx !== undefined) {
       const isCorrect = idx === currentQ.displayCorrectIdx;
       const newProg = updateProgress(currentQ.id, isCorrect ? 'correct' : 'wrong');
       setProgress(newProg);
       setIsRevealed(true);
       
-      setSessionResults(prev => ({
-        correct: isCorrect ? prev.correct + 1 : prev.correct,
-        wrong: !isCorrect ? prev.wrong + 1 : prev.wrong
-      }));
-
-      // Avtomatik keyingisiga o'tish (2 soniyadan keyin)
-      autoNextTimerRef.current = setTimeout(() => {
-        handleNext();
-      }, 2000);
+      if (isCorrect) nextStats.correct += 1;
+      else nextStats.wrong += 1;
+    } else {
+      // Kaliti yo'q savolni ham javob berilgan deb hisoblaymiz
+      setIsRevealed(true);
+      nextStats.unkeyed += 1;
+      updateProgress(currentQ.id, 'none'); 
     }
+
+    setSessionResults(nextStats);
+
+    // Avtomatik keyingisiga o'tish (2 soniyadan keyin)
+    autoNextTimerRef.current = setTimeout(() => {
+      handleNext(nextStats);
+    }, 2000);
   };
 
   const toggleStar = () => {
@@ -629,9 +635,9 @@ export const PracticeView: React.FC<{
                 }
               } else {
                 if (idx === selectedIdx) {
-                  stateClass = isRevealed ? "bg-indigo-500/20 border-indigo-500" : "bg-indigo-600 text-white border-indigo-600";
+                   stateClass = "bg-indigo-600 text-white border-indigo-600 shadow-lg";
                 } else {
-                  stateClass = isRevealed ? "opacity-40" : "";
+                  stateClass = "opacity-40";
                 }
               }
             }
@@ -653,15 +659,11 @@ export const PracticeView: React.FC<{
           })}
         </div>
 
-        {selectedIdx !== null && !hasAnswerKey && !isRevealed && (
-          <div className="mt-8 animate-in fade-in duration-300">
-            <Button onClick={() => setIsRevealed(true)} variant="secondary" className="h-16">
-              Javobni ko'rish
-            </Button>
+        {selectedIdx !== null && !hasAnswerKey && (
+          <div className="mt-8 p-4 bg-amber-500/10 border border-amber-500/20 rounded-xl animate-in fade-in duration-300">
+             <p className="text-amber-600 dark:text-amber-400 text-xs font-bold text-center">Ushbu savol uchun to'g'ri javob kiritilmagan.</p>
           </div>
         )}
-
-        {/* Manual navigatsiya tugmalari (Orqaga/Keyingisi) olib tashlandi - Tezkor tajriba uchun */}
       </div>
     </div>
   );
@@ -669,7 +671,7 @@ export const PracticeView: React.FC<{
 
 // --- RESULTS VIEW ---
 export const ResultsView: React.FC<{ 
-  results: { correct: number, wrong: number, total: number, timeSpent: number },
+  results: { correct: number, wrong: number, total: number, timeSpent: number, unkeyed: number },
   onHome: () => void 
 }> = ({ results, onHome }) => {
   const formatTime = (seconds: number) => {
@@ -678,7 +680,7 @@ export const ResultsView: React.FC<{
     return mins > 0 ? `${mins} m ${secs} s` : `${secs} s`;
   };
 
-  const accuracy = results.total > 0 ? Math.round((results.correct / results.total) * 100) : 0;
+  const accuracy = results.total > 0 ? Math.round((results.correct / (results.total - results.unkeyed || 1)) * 100) : 0;
 
   return (
     <div className="flex flex-col items-center justify-center p-8 min-h-screen bg-white dark:bg-slate-950 animate-in fade-in duration-700">
@@ -704,8 +706,8 @@ export const ResultsView: React.FC<{
           <div className="text-[10px] uppercase font-bold text-slate-400 tracking-tighter">Xato</div>
         </Card>
         <Card className="text-center p-4">
-          <div className="text-2xl font-black text-blue-500">{formatTime(results.timeSpent)}</div>
-          <div className="text-[10px] uppercase font-bold text-slate-400 tracking-tighter">Vaqt</div>
+          <div className="text-2xl font-black text-blue-500">{results.unkeyed > 0 ? results.unkeyed : formatTime(results.timeSpent)}</div>
+          <div className="text-[10px] uppercase font-bold text-slate-400 tracking-tighter">{results.unkeyed > 0 ? 'Kalitsiz' : 'Vaqt'}</div>
         </Card>
       </div>
 
